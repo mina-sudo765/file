@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Account & File Vault System</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Custom Modal/Toast for Alerts -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full transition-transform duration-300 bg-white border border-slate-200 shadow-xl rounded-xl p-4 flex items-center space-x-3 max-w-sm">
+        <div id="toast-icon" class="text-2xl">ℹ️</div>
+        <div>
+            <h4 id="toast-title" class="font-bold text-sm text-slate-900">通知</h4>
+            <p id="toast-msg" class="text-xs text-slate-600">メッセージがここに入ります。</p>
+        </div>
+    </div>
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-indigo-100">V</div>
+                <div>
+                    <h1 class="font-bold text-lg text-slate-900">VaultSystem</h1>
+                    <p class="text-xs text-slate-500">アカウント＆ファイル管理プラットフォーム</p>
+                </div>
+            </div>
+            <div id="user-nav" class="hidden flex items-center space-x-4">
+                <span id="current-user-badge" class="text-sm bg-slate-100 px-3 py-1.5 rounded-lg font-medium text-slate-700"></span>
+                <button onclick="logout()" class="text-sm text-red-600 hover:text-red-700 font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors">ログアウト</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- ==================== 1. LOGIN / REGISTER VIEW ==================== -->
+        <div id="auth-view" class="max-w-md mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-8 my-12">
+            <div class="text-center mb-8">
+                <h2 id="auth-title" class="text-2xl font-bold text-slate-900">ログイン</h2>
+                <p id="auth-subtitle" class="text-sm text-slate-500 mt-1">システムを利用するにはログインしてください</p>
+            </div>
+
+            <!-- Tab Switcher for Auth -->
+            <div class="flex bg-slate-100 p-1 rounded-xl mb-6">
+                <button onclick="switchAuthTab('login')" id="tab-login" class="flex-1 py-2 text-sm font-semibold rounded-lg bg-white text-slate-900 shadow-sm transition-all">ログイン</button>
+                <button onclick="switchAuthTab('register')" id="tab-register" class="flex-1 py-2 text-sm font-semibold text-slate-600 rounded-lg hover:text-slate-900 transition-all">新規登録</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">ユーザーID</label>
+                    <input type="text" id="login-id" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">パスワード</label>
+                    <input type="password" id="login-pass" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-2.5 rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100 text-sm">ログインする</button>
+            </form>
+
+            <!-- Register Form (Hidden by default) -->
+            <form id="form-register" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">ユーザーID（英数字）</label>
+                    <input type="text" id="reg-id" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">パスワード</label>
+                    <input type="password" id="reg-pass" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">権限設定</label>
+                    <select id="reg-role" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white">
+                        <option value="user">一般ユーザー</option>
+                        <option value="admin">管理者</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 text-white font-semibold py-2.5 rounded-xl hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-100 text-sm">アカウントを作成</button>
+            </form>
+        </div>
+
+        <!-- ==================== 2. DASHBOARD VIEW ==================== -->
+        <div id="dashboard-view" class="hidden space-y-8">
+            
+            <!-- Tab Navigation for Dashboard -->
+            <div class="flex border-b border-slate-200 space-x-8">
+                <button onclick="switchDashboardTab('files')" id="dash-tab-files" class="pb-4 font-semibold text-sm border-b-2 border-indigo-600 text-indigo-600 transition-all">📁 ファイル共有庫</button>
+                <button onclick="switchDashboardTab('accounts')" id="dash-tab-accounts" class="pb-4 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all">👥 アカウント管理システム</button>
+            </div>
+
+            <!-- TAB 1: FILE VAULT -->
+            <div id="section-files" class="space-y-6">
+                <!-- Upload Box -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-lg text-slate-900 mb-2">ファイルアップロード</h3>
+                    <p class="text-xs text-slate-500 mb-4">システム内にファイルを保存し、いつでもダウンロード・閲覧が可能です。</p>
+                    <div class="flex flex-col sm:flex-row items-center gap-4">
+                        <input type="file" id="file-input" class="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-xl p-2">
+                        <button onclick="uploadFile()" class="w-full sm:w-auto bg-indigo-600 text-white font-semibold px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors text-sm whitespace-nowrap shadow-md shadow-indigo-100">アップロード</button>
+                    </div>
+                </div>
+
+                <!-- File List Table -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                        <h3 class="font-bold text-sm text-slate-900">保存されたファイル一覧</h3>
+                        <span id="file-count" class="text-xs bg-slate-200 px-2.5 py-1 rounded-full font-medium text-slate-700">0件</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/50">
+                                    <th class="px-6 py-3">ファイル名</th>
+                                    <th class="px-6 py-3">サイズ</th>
+                                    <th class="px-6 py-3">アップロード者</th>
+                                    <th class="px-6 py-3">日時</th>
+                                    <th class="px-6 py-3 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="file-table-body" class="divide-y divide-slate-100 text-sm">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: ACCOUNT MANAGEMENT -->
+            <div id="section-accounts" class="hidden space-y-6">
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-900">アカウント一覧・管理</h3>
+                        <p class="text-xs text-slate-500 mt-1">登録されている全アカウントのID確認、パスワード再設定、削除が行えます。</p>
+                    </div>
+                    <button onclick="openCreateAccountModal()" class="bg-emerald-600 text-white font-semibold px-4 py-2 rounded-xl text-sm hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-100">+ 新規アカウント作成</button>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50/50">
+                                    <th class="px-6 py-3">ユーザーID</th>
+                                    <th class="px-6 py-3">権限</th>
+                                    <th class="px-6 py-3">登録日時</th>
+                                    <th class="px-6 py-3 text-right">管理操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="account-table-body" class="divide-y divide-slate-100 text-sm">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Password Reset Modal -->
+    <div id="modal-reset" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+            <h3 class="font-bold text-lg text-slate-900 mb-2">パスワード再設定</h3>
+            <p id="reset-target-user" class="text-xs text-slate-500 mb-4"></p>
+            <input type="hidden" id="reset-user-id">
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">新しいパスワード</label>
+                <input type="password" id="new-password-input" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeResetModal()" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors">キャンセル</button>
+                <button onclick="executePasswordReset()" class="px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">変更を保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirmation Modal (Replaces window.confirm) -->
+    <div id="modal-confirm" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 text-center">
+            <div class="text-3xl mb-3">⚠️</div>
+            <h3 id="confirm-title" class="font-bold text-lg text-slate-900 mb-2">確認</h3>
+            <p id="confirm-msg" class="text-xs text-slate-600 mb-6">本当に実行しますか？</p>
+            <div class="flex space-x-3">
+                <button onclick="closeConfirmModal(false)" class="flex-1 py-2 rounded-xl text-sm font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">キャンセル</button>
+                <button id="confirm-ok-btn" class="flex-1 py-2 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors">実行する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Preview Modal -->
+    <div id="modal-preview" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-200">
+                <h3 id="preview-filename" class="font-bold text-lg text-slate-900 truncate">ファイルプレビュー</h3>
+                <button onclick="closePreviewModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+            </div>
+            <div id="preview-content" class="flex-grow overflow-auto py-4 flex items-center justify-center bg-slate-50 rounded-xl my-4 border border-slate-100">
+                <!-- Content injected dynamically -->
+            </div>
+            <div class="flex justify-end">
+                <button onclick="closePreviewModal()" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEYS = {
+            USERS: 'vault_system_users',
+            FILES: 'vault_system_files',
+            SESSION: 'vault_system_session'
+        };
+
+        let confirmCallback = null;
+
+        // Initialize default admin account if none exists
+        function initSystem() {
+            let users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS)) || [];
+            if (users.length === 0) {
+                users.push({
+                    id: 'admin',
+                    pass: 'admin123',
+                    role: 'admin',
+                    createdAt: new Date().toLocaleString()
+                });
+                localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+            }
+
+            if (!localStorage.getItem(STORAGE_KEYS.FILES)) {
+                localStorage.setItem(STORAGE_KEYS.FILES, JSON.stringify([]));
+            }
+
+            checkSession();
+        }
+
+        // Toast Notification System
+        function showToast(title, msg, isError = false) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-title').innerText = title;
+            document.getElementById('toast-msg').innerText = msg;
+            document.getElementById('toast-icon').innerText = isError ? '⚠️' : '✅';
+            
+            toast.classList.remove('translate-x-full');
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+            }, 3000);
+        }
+
+        // Custom Confirmation Modal Trigger
+        function showConfirm(title, msg, onOk) {
+            document.getElementById('confirm-title').innerText = title;
+            document.getElementById('confirm-msg').innerText = msg;
+            confirmCallback = onOk;
+            document.getElementById('modal-confirm').classList.remove('hidden');
+        }
+
+        function closeConfirmModal(result) {
+            document.getElementById('modal-confirm').classList.add('hidden');
+            if (result && typeof confirmCallback === 'function') {
+                confirmCallback();
+            }
+            confirmCallback = null;
+        }
+
+        // Auth Tab Switcher
+        function switchAuthTab(tab) {
+            const loginForm = document.getElementById('form-login');
+            const regForm = document.getElementById('form-register');
+            const tabLogin = document.getElementById('tab-login');
+            const tabReg = document.getElementById('tab-register');
+            const title = document.getElementById('auth-title');
+            const subtitle = document.getElementById('auth-subtitle');
+
+            if (tab === 'login') {
+                loginForm.classList.remove('hidden');
+                regForm.classList.add('hidden');
+                tabLogin.className = "flex-1 py-2 text-sm font-semibold rounded-lg bg-white text-slate-900 shadow-sm transition-all";
+                tabReg.className = "flex-1 py-2 text-sm font-semibold text-slate-600 rounded-lg hover:text-slate-900 transition-all";
+                title.innerText = "ログイン";
+                subtitle.innerText = "システムを利用するにはログインしてください";
+            } else {
+                loginForm.classList.add('hidden');
+                regForm.classList.remove('hidden');
+                tabReg.className = "flex-1 py-2 text-sm font-semibold rounded-lg bg-white text-slate-900 shadow-sm transition-all";
+                tabLogin.className = "flex-1 py-2 text-sm font-semibold text-slate-600 rounded-lg hover:text-slate-900 transition-all";
+                title.innerText = "新規アカウント作成";
+                subtitle.innerText = "新しいユーザーIDとパスワードを設定します";
+            }
+        }
+
+        // Handle Login
+        function handleLogin(e) {
+            e.preventDefault();
+            const id = document.getElementById('login-id').value.trim();
+            const pass = document.getElementById('login-pass').value;
+
+            let users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS)) || [];
+            let user = users.find(u => u.id === id && u.pass === pass);
+
+            if (user) {
+                localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(user));
+                showToast("ログイン成功", `${user.id} さん、ようこそ！`);
+                checkSession();
+            } else {
+                showToast("ログイン失敗", "ユーザーIDまたはパスワードが間違っています。", true);
+            }
+        }
+
+        // Handle Register
+        function handleRegister(e) {
+            e.preventDefault();
+            const id = document.getElementById('reg-id').value.trim();
+            const pass = document.getElementById('reg-pass').value;
+            const role = document.getElementById('reg-role').value;
+
+            let users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS)) || [];
+            if (users.some(u => u.id === id)) {
+                showToast("登録エラー", "このユーザーIDは既に使われています。", true);
+                return;
+            }
+
+            users.push({ id, pass, role, createdAt: new Date().toLocaleString() });
+            localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+            showToast("登録完了", "アカウントが作成されました。ログインしてください。");
+            
+            document.getElementById('form-register').reset();
+            switchAuthTab('login');
+        }
+
+        // Logout
+        function logout() {
+            localStorage.removeItem(STORAGE_KEYS.SESSION);
+            checkSession();
+            showToast("ログアウト", "ログアウトしました。");
+        }
+
+        // Check Session State
+        function checkSession() {
+            let session = JSON.parse(localStorage.getItem(STORAGE_KEYS.SESSION));
+            const authView = document.getElementById('auth-view');
+            const dashView = document.getElementById('dashboard-view');
+            const userNav = document.getElementById('user-nav');
+            const userBadge = document.getElementById('current-user-badge');
+
+            if (session) {
+                authView.classList.add('hidden');
+                dashView.classList.remove('hidden');
+                userNav.classList.remove('hidden');
+                userBadge.innerText = `👤 ${session.id} (${session.role === 'admin' ? '管理者' : '一般'})`;
+                loadFiles();
+                loadAccounts();
+            } else {
+                authView.classList.remove('hidden');
+                dashView.classList.add('hidden');
+                userNav.classList.add('hidden');
+            }
+        }
+
+        // Dashboard Tab Switcher
+        function switchDashboardTab(tab) {
+            const filesSec = document.getElementById('section-files');
+            const accountsSec = document.getElementById('section-accounts');
+            const tabFiles = document.getElementById('dash-tab-files');
+            const tabAccounts = document.getElementById('dash-tab-accounts');
+
+            if (tab === 'files') {
+                filesSec.classList.remove('hidden');
+                accountsSec.classList.add('hidden');
+                tabFiles.className = "pb-4 font-semibold text-sm border-b-2 border-indigo-600 text-indigo-600 transition-all";
+                tabAccounts.className = "pb-4 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all";
+            } else {
+                filesSec.classList.add('hidden');
+                accountsSec.classList.remove('hidden');
+                tabAccounts.className = "pb-4 font-semibold text-sm border-b-2 border-indigo-600 text-indigo-600 transition-all";
+                tabFiles.className = "pb-4 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all";
+            }
+        }
+
+        function uploadFile() {
+            const fileInput = document.getElementById('file-input');
+            if (fileInput.files.length === 0) {
+                showToast("エラー", "ファイルを選択してください。", true);
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const session = JSON.parse(localStorage.getItem(STORAGE_KEYS.SESSION));
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Data = e.target.result;
+                let files = JSON.parse(localStorage.getItem(STORAGE_KEYS.FILES)) || [];
+
+                files.push({
+                    id: crypto.randomUUID(),
+                    name: file.name,
+                    size: formatBytes(file.size),
+                    type: file.type,
+                    data: base64Data,
+                    uploader: session.id,
+                    date: new Date().toLocaleString()
+                });
+
+                localStorage.setItem(STORAGE_KEYS.FILES, JSON.stringify(files));
+                fileInput.value = '';
+                loadFiles();
+                showToast("成功", "ファイルをアップロードしました！");
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function loadFiles() {
+            let files = JSON.parse(localStorage.getItem(STORAGE_KEYS.FILES)) || [];
+            const tbody = document.getElementById('file-table-body');
+            document.getElementById('file-count').innerText = `${files.length}件`;
+            tbody.innerHTML = '';
+
+            if (files.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">アップロードされたファイルはありません。</td></tr>`;
+                return;
+            }
+
+            files.forEach(file => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition-colors";
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-slate-900 truncate max-w-xs">${escapeHtml(file.name)}</td>
+                    <td class="px-6 py-4 text-slate-500">${file.size}</td>
+                    <td class="px-6 py-4 text-slate-600">${escapeHtml(file.uploader)}</td>
+                    <td class="px-6 py-4 text-slate-500 text-xs">${file.date}</td>
+                    <td class="px-6 py-4 text-right space-x-2">
+                        <button onclick="previewFile('${file.id}')" class="text-indigo-600 hover:text-indigo-800 font-semibold text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors">閲覧</button>
+                        <button onclick="downloadFile('${file.id}')" class="text-emerald-600 hover:text-emerald-800 font-semibold text-xs px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 transition-colors">ダウンロード</button>
+                        <button onclick="deleteFile('${file.id}')" class="text-red-600 hover:text-red-800 font-semibold text-xs px-2 py-1.5 rounded-lg hover:bg-red-50 transition-colors">削除</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function downloadFile(id) {
+            let files = JSON.parse(localStorage.getItem(STORAGE_KEYS.FILES)) || [];
+            let file = files.find(f => f.id === id);
+            if (!file) return;
+
+            const a = document.createElement('a');
+            a.href = file.data;
+            a.download = file.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showToast("ダウンロード", `${file.name} をダウンロードしました。`);
+        }
+
+        function previewFile(id) {
+            let files = JSON.parse(localStorage.getItem(STORAGE_KEYS.FILES)) || [];
+            let file = files.find(f => f.id === id);
+            if (!file) return;
+
+            document.getElementById('preview-filename').innerText = file.name;
+            const container = document.getElementById('preview-content');
+            container.innerHTML = '';
+
+            if (file.type.startsWith('image/')) {
+                container.innerHTML = `<img src="${file.data}" class="max-h-[60vh] rounded-lg shadow-sm">`;
+            } else if (file.type === 'application/pdf') {
+                container.innerHTML = `<embed src="${file.data}" type="application/pdf" class="w-full h-[60vh] rounded-lg">`;
+            } else if (file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.md') || file.name.endsWith('.js') || file.name.endsWith('.html')) {
+                const base64Content = file.data.split(',')[1];
+                const textContent = atob(base64Content);
+                container.innerHTML = `<pre class="w-full p-4 bg-white text-xs font-mono rounded-lg border border-slate-200 overflow-auto max-h-[60vh] text-slate-800">${escapeHtml(textContent)}</pre>`;
+            } else {
+                container.innerHTML = `<div class="text-center py-8 text-slate-500">このファイル形式はインラインプレビューに対応していません。<br>ダウンロードしてご確認ください。</div>`;
+            }
+
+            document.getElementById('modal-preview').classList.remove('hidden');
+        }
+
+        function closePreviewModal() {
+            document.getElementById('modal-preview').classList.add('hidden');
+        }
+
+        function deleteFile(id) {
+            showConfirm("ファイル削除", "本当にこのファイルを削除しますか？", () => {
+                let files = JSON.parse(localStorage.getItem(STORAGE_KEYS.FILES)) || [];
+                files = files.filter(f => f.id !== id);
+                localStorage.setItem(STORAGE_KEYS.FILES, JSON.stringify(files));
+                loadFiles();
+                showToast("削除完了", "ファイルを削除しました。");
+            });
+        }
+
+        function loadAccounts() {
+            let users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS)) || [];
+            const tbody = document.getElementById('account-table-body');
+            tbody.innerHTML = '';
+
+            users.forEach(user => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition-colors";
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-slate-900">${escapeHtml(user.id)}</td>
+                    <td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full text-xs font-semibold ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-700'}">${user.role}</span></td>
+                    <td class="px-6 py-4 text-slate-500 text-xs">${user.createdAt || 'N/A'}</td>
+                    <td class="px-6 py-4 text-right space-x-2">
+                        <button onclick="openResetModal('${user.id}')" class="text-indigo-600 hover:text-indigo-800 font-semibold text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors">パスワード再設定</button>
+                        <button onclick="deleteAccount('${user.id}')" class="text-red-600 hover:text-red-800 font-semibold text-xs px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors">削除</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openResetModal(userId) {
+            document.getElementById('reset-user-id').value = userId;
+            document.getElementById('reset-target-user').innerText = `対象ユーザー: ${userId}`;
+            document.getElementById('new-password-input').value = '';
+            document.getElementById('modal-reset').classList.remove('hidden');
+        }
+
+        function closeResetModal() {
+            document.getElementById('modal-reset').classList.add('hidden');
+        }
+
+        function executePasswordReset() {
+            const userId = document.getElementById('reset-user-id').value;
+            const newPass = document.getElementById('new-password-input').value;
+
+            if (!newPass) {
+                showToast("エラー", "新しいパスワードを入力してください。", true);
+                return;
+            }
+
+            let users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS)) || [];
+            let user = users.find(u => u.id === userId);
+            if (user) {
+                user.pass = newPass;
+                localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+                closeResetModal();
+                showToast("成功", `${userId} のパスワードを再設定しました。`);
+            }
+        }
+
+        function deleteAccount(userId) {
+            let session = JSON.parse(localStorage.getItem(STORAGE_KEYS.SESSION));
+            if (session.id === userId) {
+                showToast("エラー", "現在ログイン中のアカウントは削除できません。", true);
+                return;
+            }
+
+            let users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS)) || [];
+            if (users.length <= 1) {
+                showToast("エラー", "最後の管理アカウントは削除できません。", true);
+                return;
+            }
+
+            showConfirm("アカウント削除", `ユーザー「${userId}」を本当に削除しますか？`, () => {
+                users = users.filter(u => u.id !== userId);
+                localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+                loadAccounts();
+                showToast("削除完了", "アカウントを削除しました。");
+            });
+        }
+
+        function openCreateAccountModal() {
+            switchAuthTab('register');
+            document.getElementById('dash-tab-accounts').click();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            showToast("案内", "上の新規登録フォームから新しいアカウントを作成してください。");
+        }
+
+        // Helper: Escape HTML to prevent XSS
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // Helper: Format Bytes
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        // Bind confirmation modal OK button action
+        document.getElementById('confirm-ok-btn').addEventListener('click', () => {
+            closeConfirmModal(true);
+        });
+
+        // Initialize on load
+        window.onload = function() {
+            initSystem();
+        };
+    </script>
+</body>
+</html>
